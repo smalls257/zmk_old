@@ -18,11 +18,7 @@ jobs:
     strategy:
       matrix:
         board:
-          - bluemicro840_v1
-          - nice_nano
           - nice_nano_v2
-          - nrfmicro_13
-          - proton_c
         shield:
           - sofle_left
           - sofle_right
