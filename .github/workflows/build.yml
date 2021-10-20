@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         board:
-          - nice_nano_v2
+          - nice_nano@2
         shield:
           - sofle_left
           - sofle_right
@@ -35,7 +35,7 @@ jobs:
             shield: kyria_left
             cmake-args: -DCONFIG_ZMK_DISPLAY=y
             skip-archive: true
-          - board: nice_nano_v2
+          - board: nice_nano@2
             shield: kyria_right
             cmake-args: -DCONFIG_ZMK_DISPLAY=y
             skip-archive: true
