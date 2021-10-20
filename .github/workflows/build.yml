@@ -31,7 +31,7 @@ jobs:
           - board: planck_rev6
           - board: proton_c
             shield: clueboard_california
-          - board: nice_nano_v2
+          - board: nice_nano@2
             shield: kyria_left
             cmake-args: -DCONFIG_ZMK_DISPLAY=y
             skip-archive: true
