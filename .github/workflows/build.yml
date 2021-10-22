@@ -1,3 +1,5 @@
+name: Build
+
 on:
   push:
     paths:
@@ -7,21 +9,29 @@ on:
     paths:
       - ".github/workflows/build.yml"
       - "app/**"
-name: Build
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: zmkfirmware/zmk-build-arm:2.4
+      image: zmkfirmware/zmk-build-arm:2.5
     strategy:
       matrix:
         board:
-          - nice_nano
+          - nice_nano_v2
         shield:
           - sofle_left
           - sofle_right
         cmake-args: [""]
+        include:
+          - board: nice_nano_v2
+            shield: kyria_left
+            cmake-args: -DCONFIG_ZMK_DISPLAY=y
+            skip-archive: true
+          - board: nice_nano_v2
+            shield: kyria_right
+            cmake-args: -DCONFIG_ZMK_DISPLAY=y
+            skip-archive: true
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -35,40 +45,39 @@ jobs:
             tools/
             zephyr/
             bootloader/
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('manifest-dir/west.yml') }}
+          key: 4-${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('app/west.yml') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-      - name: West Init
-        run: west init -l config
-      - name: West Update
+            4-${{ runner.os }}-build-${{ env.cache-name }}-
+            4-${{ runner.os }}-build-
+            4-${{ runner.os }}-
+        timeout-minutes: 2
+        continue-on-error: true
+      - name: Initialize workspace (west init)
+        run: west init -l app
+      - name: Update modules (west update)
         run: west update
-      - name: West Zephyr export
+      - name: Export Zephyr CMake package (west zephyr-export)
         run: west zephyr-export
-      - name: West Build (Sofle Left)
-        run: west build -s zmk/app -b nice_nano -- -DSHIELD=sofle_left -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-      - name: Sofle DTS File
-        if: ${{ always() }}
-        run: cat -n build/zephyr/nice_nano.dts.pre.tmp
-      - name: Sofle Left Kconfig file
-        run: cat build/zephyr/.config | grep -v "^#" | grep -v "^$"
-      - name: Rename zmk.uf2
-        run: cp build/zephyr/zmk.uf2 sofle_left_nice_nano.uf2
-      - name: Archive (Sofle Left)
+      - name: Prepare variables
+        id: variables
+        run: |
+          SHIELD_ARG=
+          ARTIFACT_NAME="${{ matrix.board }}"
+          if [ -n "${{ matrix.shield }}" ]; then
+            SHIELD_ARG="-DSHIELD=${{ matrix.shield }}"
+            ARTIFACT_NAME="${ARTIFACT_NAME}-${{ matrix.shield }}"
+          fi
+          ARTIFACT_NAME="${ARTIFACT_NAME}-zmk"
+          echo ::set-output name=shield-arg::${SHIELD_ARG}
+          echo ::set-output name=artifact-name::${ARTIFACT_NAME}
+      - name: Build (west build)
+        run: west build -s app -b ${{ matrix.board }} -- ${{ steps.variables.outputs.shield-arg }} ${{ matrix.cmake-args }}
+      - name: Archive artifacts
+        if: ${{ !matrix.skip-archive }}
         uses: actions/upload-artifact@v2
         with:
-          name: SofleV2firmware
-          path: sofle_left_nice_nano.uf2
-      - name: West Build (Sofle Right)
-        run: west build --pristine -s zmk/app -b nice_nano -- -DSHIELD=sofle_right -DZMK_CONFIG="${GITHUB_WORKSPACE}/config"
-
-      - name: Sofle Right Kconfig file
-        run: cat build/zephyr/.config | grep -v "^#" | grep -v "^$"
-      - name: Rename zmk.uf2
-        run: cp build/zephyr/zmk.uf2 sofle_right_nice_nano.uf2
-      - name: Archive (Sofle Right)
-        uses: actions/upload-artifact@v2
-        with:
-          name: SofleV2firmware
-          path: sofle_right_nice_nano.uf2
+          name: "${{ steps.variables.outputs.artifact-name }}"
+          path: |
+            build/zephyr/zmk.hex
+            build/zephyr/zmk.uf2
+        continue-on-error: true
