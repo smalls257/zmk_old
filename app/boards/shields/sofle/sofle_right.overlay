@@ -20,7 +20,7 @@
 };
 
 &right_encoder {
-	status = "okay";
+	status = "disabled";
 };
 
 &pro_micro_i2c {
