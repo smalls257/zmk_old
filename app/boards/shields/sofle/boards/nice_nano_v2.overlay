@@ -1,4 +1,4 @@
-#include "../sofle.dtsi"
+#include "/__w/zmk/zmk/app/boards/shields/sofle/sofle.dtsi"
 
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
